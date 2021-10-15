@@ -14,16 +14,25 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Host Setup
+      - name: Host Prep
         run: |
           sudo apt-get -y update
           sudo apt-get -y install build-essential debootstrap cowbuilder devscripts \
-           dh-python python3-all debhelper debian-archive-keyring git
+           dh-python python3-all python3-setuptools debhelper debian-archive-keyring git
 
-      - name: Empty Archive
+      - name: Archive Setup
         run: |
           install -d repo
+          (cd repo && apt-ftparchive sources . > Sources)
+          (cd repo && apt-ftparchive packages . > Packages)
           (cd repo && apt-ftparchive release . > Release)
+
+          cat <<EOF > local.list
+          deb [allow-insecure=yes] file:$PWD/repo ./
+          EOF
+
+          sudo cp local.list /etc/apt/sources.list.d/
+          sudo apt-get -y update
 
       - name: CoW config
         run: |
@@ -40,20 +49,27 @@ jobs:
           sudo cp pbuilderrc /etc/
           sudo cowbuilder dumpconfig
 
-      - name: setuptools_dso
-        run: |
-          git clone --depth 1 https://github.com/mdavidsaver/setuptools_dso.git setuptools_dso-git
-          (cd setuptools_dso-git && git archive --prefix=setuptools_dso-2.3/ HEAD) |bzip2 > setuptools-dso_2.3.orig.tar.bz2
-
-          (cd setuptools_dso && tar --strip-components=1 -xjf ../setuptools-dso_*.orig.tar.bz2)
-          ls setuptools_dso
-          (cd setuptools_dso && dpkg-buildpackage -S -us -uc)
-          ls
-
       - name: CoW Create
         run: |
           sudo cowbuilder create
 
-      - name: CoW it
+      - name: setuptools_dso
         run: |
+          set -x
+          git clone --depth 1 https://github.com/mdavidsaver/setuptools_dso.git setuptools_dso-git
+          (cd setuptools_dso-git && git archive --prefix=setuptools_dso-2.3/ HEAD) |bzip2 > setuptools-dso_2.3.orig.tar.bz2
+
+          (cd setuptools_dso && tar --strip-components=1 -xjf ../setuptools-dso_*.orig.tar.bz2)
+          (cd setuptools_dso && dpkg-buildpackage -S -us -uc)
+          dcmd cp setuptools-dso*.dsc repo/
+
           sudo cowbuilder build setuptools-dso*.dsc
+          dpkg-deb -I repo/python3-setuptools-dso*.deb
+
+          ls -lh repo
+
+          (cd repo && apt-ftparchive sources . > Sources)
+          (cd repo && apt-ftparchive packages . > Packages)
+          (cd repo && apt-ftparchive release . > Release)
+          sudo apt-get -y update
+          sudo apt-get -y --allow-unauthenticated install python3-setuptools-dso
