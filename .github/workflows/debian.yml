@@ -53,7 +53,7 @@ jobs:
         run: |
           sudo cowbuilder create
 
-      - name: setuptools_dso
+      - name: setuptools-dso
         run: |
           set -x
           git clone --depth 1 https://github.com/mdavidsaver/setuptools_dso.git setuptools_dso-git
@@ -73,3 +73,10 @@ jobs:
           (cd repo && apt-ftparchive release . > Release)
           sudo apt-get -y update
           sudo apt-get -y --allow-unauthenticated install python3-setuptools-dso
+
+      - name: Save
+        uses: actions/upload-artifact@v2
+        with:
+          name: apt-repo
+          path: repo
+          retention-days: 1
