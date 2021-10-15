@@ -17,7 +17,8 @@ jobs:
       - name: Host Setup
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential debootstrap cowbuilder devscripts debian-archive-keyring
+          sudo apt-get -y install build-essential debootstrap cowbuilder devscripts \
+           dh-python python3-all debhelper debian-archive-keyring git
 
       - name: Empty Archive
         run: |
@@ -39,6 +40,20 @@ jobs:
           sudo cp pbuilderrc /etc/
           sudo cowbuilder dumpconfig
 
+      - name: setuptools_dso
+        run: |
+          git clone --depth 1 https://github.com/mdavidsaver/setuptools_dso.git setuptools_dso-git
+          (cd setuptools_dso-git && git archive --prefix=setuptools_dso-2.3/ HEAD) |bzip2 > setuptools-dso_2.3.orig.tar.bz2
+
+          (cd setuptools_dso && tar --strip-components=1 -xjf ../setuptools-dso_*.orig.tar.bz2)
+          ls setuptools_dso
+          (cd setuptools_dso && dpkg-buildpackage -S -us -uc)
+          ls
+
       - name: CoW Create
         run: |
           sudo cowbuilder create
+
+      - name: CoW it
+        run: |
+          sudo cowbuilder build setuptools-dso*.dsc
