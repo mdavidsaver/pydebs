@@ -1,0 +1,5 @@
+setuptools-dso (2.3-1) unstable; urgency=low
+
+  * source package automatically created by stdeb 0.10.0
+
+ -- Michael Davidsaver <mdavidsaver@gmail.com>  Wed, 13 Oct 2021 20:53:58 -0700

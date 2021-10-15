@@ -1,0 +1,44 @@
+name: Debian Packages
+
+on: [push, pull_request]
+
+jobs:
+  build-deb:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dist: bullseye
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Host Setup
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential debootstrap cowbuilder devscripts debian-archive-keyring
+
+      - name: Empty Archive
+        run: |
+          install -d repo
+          (cd repo && apt-ftparchive release . > Release)
+
+      - name: CoW config
+        run: |
+          set -x
+          cat <<EOF > pbuilderrc
+          DISTRIBUTION=${{ matrix.dist }}
+          BASEPATH=/var/cache/pbuilder/base-${{ matrix.dist }}.cow
+          MIRRORSITE=http://deb.debian.org/debian/
+          BUILDRESULT="$PWD/repo"
+          OTHERMIRROR="deb [allow-insecure=yes] file:$PWD/repo ./"
+          BINDMOUNTS="$PWD/repo"
+          EOF
+          cat pbuilderrc
+          sudo cp pbuilderrc /etc/
+          sudo cowbuilder dumpconfig
+
+      - name: CoW Create
+        run: |
+          sudo cowbuilder create
